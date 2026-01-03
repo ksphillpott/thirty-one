@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>THIRTY-ONE - A Roguelike Card Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#111827;--bg2:#1f2937;--bg3:#374151;--glass:rgba(255,255,255,0.05);--border:rgba(255,255,255,0.1);--text:#f1f5f9;--text2:#94a3b8;--gold:#fbbf24;--green:#22c55e;--blue:#3b82f6;--red:#ef4444;--purple:#9333ea}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}
+.screen{display:none;min-height:100vh;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.screen.active{display:flex}
+.menu-title{font-family:'Space Grotesk',sans-serif;font-size:3.5rem;font-weight:700;color:white;margin-bottom:8px}
+.menu-subtitle{color:var(--text2);margin-bottom:40px;font-size:1.1rem}
+.btn{padding:16px 32px;font-size:1rem;font-weight:600;border:none;border-radius:12px;cursor:pointer;transition:all 0.2s;margin:6px}
+.btn:active{transform:scale(0.95)}
+.btn-primary{background:linear-gradient(135deg,var(--blue),#2563eb);color:white}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-success{background:linear-gradient(135deg,var(--green),#16a34a);color:white}
+.btn-danger{background:linear-gradient(135deg,var(--red),#dc2626);color:white}
+.btn-secondary{background:var(--bg2);border:1px solid var(--border);color:var(--text)}
+.btn-gold{background:linear-gradient(135deg,var(--gold),#f59e0b);color:black}
+.btn-lg{font-size:1.25rem;padding:20px 48px}
+.deck-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;max-width:900px;margin:20px 0}
+.deck-card{background:var(--bg2);border:2px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;transition:all 0.2s;text-align:center}
+.deck-card:hover{border-color:var(--blue);transform:translateY(-4px)}
+.deck-card.selected{border-color:var(--gold);box-shadow:0 0 20px rgba(251,191,36,0.3)}
+.deck-name{font-size:1.25rem;font-weight:700;color:white;margin-bottom:8px}
+.deck-desc{font-size:0.875rem;color:var(--text2)}
+.deck-count{font-size:0.75rem;color:var(--text2);margin-top:8px}
+.game-container{width:100%;max-width:900px;padding:12px}
+.game-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:16px;background:var(--bg2);border-radius:16px;margin-bottom:16px}
+.stat-box{background:var(--bg3);border-radius:10px;padding:10px 16px;text-align:center;min-width:70px}
+.stat-label{font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.stat-value{font-size:1.5rem;font-weight:700}
+.stat-value.gold{color:var(--gold)}
+.stat-value.green{color:var(--green)}
+.stat-value.red{color:var(--red)}
+.stat-value.blue{color:var(--blue)}
+.hearts-row{display:flex;gap:4px;align-items:center}
+.heart{width:24px;height:24px}
+.heart.filled{color:var(--red)}
+.heart.empty{color:var(--bg3)}
+.modifiers-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.modifier-badge{padding:8px 12px;border-radius:8px;font-size:0.75rem;font-weight:600;color:white;cursor:default;position:relative}
+.modifier-badge.clickable{cursor:pointer;animation:pulse 1s infinite}
+.modifier-badge .tooltip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--bg);border:1px solid var(--border);padding:8px 12px;border-radius:8px;white-space:nowrap;z-index:100;font-weight:400}
+.modifier-badge:hover .tooltip{display:block}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.boss-banner{background:linear-gradient(135deg,#7f1d1d,#991b1b);padding:16px;border-radius:12px;text-align:center;margin-bottom:16px;border:2px solid var(--red)}
+.boss-name{font-size:1.5rem;font-weight:700;color:white}
+.boss-desc{color:#fca5a5;font-size:0.9rem;margin-top:4px}
+.play-area{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;margin-bottom:20px}
+.card-zone{background:var(--bg2);border-radius:16px;padding:20px;min-width:200px;text-align:center}
+.zone-title{font-size:0.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.hand-cards{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.card{width:80px;height:112px;border-radius:8px;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 12px rgba(0,0,0,0.4);background-size:cover;background-position:center;background-color:var(--bg3);position:relative}
+.card:hover:not(.disabled){transform:translateY(-8px);box-shadow:0 8px 20px rgba(0,0,0,0.5)}
+.card.selected{box-shadow:0 0 0 3px var(--gold);transform:translateY(-12px)}
+.card.disabled{opacity:0.5;cursor:not-allowed}
+.card.sealed::before{content:'🔒';position:absolute;top:4px;left:4px;font-size:12px}
+.card.cursed{filter:hue-rotate(180deg) brightness(0.8)}
+.card.void{filter:grayscale(1)}
+.card-back{background:linear-gradient(135deg,#1e3a5f,#0f172a);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.card-back-label{font-size:0.65rem;color:var(--text2)}
+.card-back-count{font-size:1.5rem;font-weight:700;color:white}
+.card-value-badge{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.8);color:white;font-size:0.7rem;font-weight:700;padding:2px 6px;border-radius:4px}
+.score-display{background:var(--bg2);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px}
+.score-label{font-size:0.875rem;color:var(--text2)}
+.score-current{font-size:3rem;font-weight:700}
+.score-current.bust{color:var(--red)}
+.score-target{font-size:1rem;color:var(--text2);margin-top:4px}
+.action-buttons{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.result-panel{background:var(--bg2);border-radius:20px;padding:32px;max-width:400px;text-align:center}
+.result-title{font-size:2rem;font-weight:700;margin-bottom:20px}
+.result-title.success{color:var(--green)}
+.result-title.fail{color:var(--red)}
+.result-stats{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.result-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.result-row:last-child{border-bottom:none}
+.result-row.total{font-size:1.25rem;font-weight:700;padding-top:16px;border-top:2px solid var(--border)}
+.modifier-choices{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;max-width:800px}
+.modifier-choice{background:var(--bg2);border-radius:16px;padding:20px;width:240px;cursor:pointer;transition:all 0.2s;border-left:4px solid var(--blue)}
+.modifier-choice:hover{transform:scale(1.05);background:var(--bg3)}
+.modifier-choice-category{font-size:0.7rem;color:var(--text2);text-transform:uppercase}
+.modifier-choice-name{font-size:1.25rem;font-weight:700;color:white;margin:8px 0}
+.modifier-choice-desc{font-size:0.875rem;color:var(--text2)}
+.boss-intro{text-align:center;max-width:600px}
+.boss-warning{color:var(--red);font-size:1.25rem;margin-bottom:8px}
+.boss-intro-name{font-size:3rem;font-weight:700;color:var(--red);margin-bottom:16px}
+.boss-intro-desc{font-size:1.25rem;color:white;margin-bottom:12px}
+.boss-intro-flavor{color:var(--text2);font-style:italic;margin-bottom:32px}
+.end-screen{text-align:center}
+.end-title{font-size:4rem;font-weight:700;margin-bottom:16px}
+.end-title.victory{color:var(--gold)}
+.end-title.gameover{color:var(--red)}
+.end-subtitle{color:var(--text2);font-size:1.25rem;margin-bottom:32px}
+.final-score{font-size:3rem;font-weight:700;color:var(--gold);margin-bottom:8px}
+.card-fallback{display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;color:black;font-weight:700}
+.card-fallback.red{color:#dc2626}
+.card-fallback .rank{font-size:1.5rem}
+.card-fallback .suit{font-size:2rem}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay.active{display:flex}
+.modal-content{background:var(--bg2);border-radius:20px;padding:32px;max-width:400px;text-align:center}
+.modal-title{font-size:1.5rem;font-weight:700;color:var(--red);margin-bottom:16px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;max-width:800px;margin:20px 0}
+.stats-card{background:var(--bg2);border-radius:12px;padding:20px;text-align:center}
+.stats-card-value{font-size:2rem;font-weight:700;color:var(--gold)}
+.stats-card-label{font-size:0.875rem;color:var(--text2)}
+</style>
+</head>
+<body>
+<div id="screen-menu" class="screen active">
+  <h1 class="menu-title">THIRTY-ONE</h1>
+  <p class="menu-subtitle">A Roguelike Card Game</p>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn btn-primary btn-lg" onclick="showScreen('deck_select')">New Run</button>
+    <button class="btn btn-secondary" onclick="showScreen('stats')">Statistics</button>
+  </div>
+</div>
+<div id="screen-deck_select" class="screen">
+  <h2 style="font-size:2rem;font-weight:700;color:white;margin-bottom:8px">Choose Your Deck</h2>
+  <p style="color:var(--text2);margin-bottom:24px">Each deck offers a unique challenge</p>
+  <div class="deck-grid" id="deck-grid"></div>
+  <div style="margin-top:24px;display:flex;gap:12px">
+    <button class="btn btn-secondary" onclick="showScreen('menu')">Back</button>
+    <button class="btn btn-success btn-lg" onclick="startNewRun()">Start Run</button>
+  </div>
+</div>
+<div id="screen-playing" class="screen">
+  <div class="game-container">
+    <div class="game-header">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="stat-box"><div class="stat-label">Act</div><div class="stat-value" id="stat-act">1</div></div>
+        <div class="stat-box"><div class="stat-label">Round</div><div class="stat-value" id="stat-round">1</div></div>
+        <div class="stat-box"><div class="stat-label">Score</div><div class="stat-value gold" id="stat-score">0</div></div>
+      </div>
+      <div class="hearts-row" id="hearts-row"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="stat-box"><div class="stat-label">Actions</div><div class="stat-value blue" id="stat-actions">5</div></div>
+        <div class="stat-box"><div class="stat-label">Streak</div><div class="stat-value green" id="stat-streak">0</div></div>
+        <div class="stat-box"><div class="stat-label">Multi</div><div class="stat-value gold" id="stat-multi">1.0x</div></div>
+      </div>
+    </div>
+    <div class="modifiers-bar" id="modifiers-bar"></div>
+    <div class="boss-banner" id="boss-banner" style="display:none">
+      <div class="boss-name" id="boss-banner-name"></div>
+      <div class="boss-desc" id="boss-banner-desc"></div>
+    </div>
+    <div class="score-display">
+      <div class="score-label">Current Hand Score</div>
+      <div class="score-current" id="current-score">0</div>
+      <div class="score-target" id="target-display">Target: 17 | Bust: 31</div>
+    </div>
+    <div class="play-area">
+      <div class="card-zone">
+        <div class="zone-title">Deck</div>
+        <div class="card card-back" id="deck-card" onclick="drawCard(false)">
+          <div class="card-back-label">CARDS</div>
+          <div class="card-back-count" id="deck-count">52</div>
+        </div>
+      </div>
+      <div class="card-zone" style="flex:1;min-width:300px">
+        <div class="zone-title">Your Hand</div>
+        <div class="hand-cards" id="hand-cards"></div>
+      </div>
+      <div class="card-zone">
+        <div class="zone-title">Discard</div>
+        <div class="card card-back" id="discard-card" onclick="drawCard(true)" style="opacity:0.5">
+          <div class="card-back-label">DISCARD</div>
+          <div class="card-back-count" id="discard-count">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="action-buttons">
+      <button class="btn btn-primary" onclick="drawCard(false)" id="btn-draw">Draw Card</button>
+      <button class="btn btn-secondary" onclick="discardSelected()" id="btn-discard">Discard Selected</button>
+      <button class="btn btn-success" onclick="knock()" id="btn-knock">Knock</button>
+    </div>
+  </div>
+</div>
+<div id="screen-round_end" class="screen">
+  <div class="result-panel">
+    <div class="result-title" id="result-title">Round Complete!</div>
+    <div class="result-stats">
+      <div class="result-row"><span style="color:var(--text2)">Hand Score:</span><span id="result-hand-score">0</span></div>
+      <div class="result-row"><span style="color:var(--text2)">Target:</span><span id="result-target">17</span></div>
+      <div class="result-row"><span style="color:var(--text2)">Base Points:</span><span id="result-base">0</span></div>
+      <div class="result-row"><span style="color:var(--text2)">Bonus:</span><span style="color:var(--green)" id="result-bonus">+0</span></div>
+      <div class="result-row"><span style="color:var(--text2)">Multiplier:</span><span style="color:var(--gold)" id="result-multi">x1.0</span></div>
+      <div class="result-row total"><span>Round Score:</span><span style="color:var(--gold)" id="result-round-score">+0</span></div>
+    </div>
+    <div class="hearts-row" id="result-hearts" style="justify-content:center;margin-bottom:16px"></div>
+    <button class="btn btn-primary btn-lg" onclick="advanceRound()">Continue</button>
+  </div>
+</div>
+<div id="screen-modifier_select" class="screen">
+  <h2 style="font-size:2rem;font-weight:700;color:white;margin-bottom:8px">Choose a Modifier</h2>
+  <p style="color:var(--text2);margin-bottom:24px">Select one to add to your run</p>
+  <div class="modifier-choices" id="modifier-choices"></div>
+  <button class="btn btn-secondary" onclick="skipModifier()" style="margin-top:24px">Skip</button>
+</div>
+<div id="screen-boss_intro" class="screen">
+  <div class="boss-intro">
+    <div class="boss-warning">⚠ BOSS ROUND ⚠</div>
+    <div class="boss-intro-name" id="boss-intro-name"></div>
+    <div class="boss-intro-desc" id="boss-intro-desc"></div>
+    <div class="boss-intro-flavor" id="boss-intro-flavor"></div>
+    <button class="btn btn-danger btn-lg" onclick="startRound()">Face the Boss</button>
+  </div>
+</div>
+<div id="screen-game_over" class="screen">
+  <div class="end-screen">
+    <h2 class="end-title gameover">GAME OVER</h2>
+    <p class="end-subtitle">Your stability reached zero</p>
+    <div class="result-panel" style="margin:0 auto 24px">
+      <div style="color:var(--text2)">Final Score</div>
+      <div class="final-score" id="gameover-score">0</div>
+      <div style="color:var(--text2)" id="gameover-progress">Reached Act 1, Round 1</div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button class="btn btn-secondary" onclick="showScreen('menu')">Menu</button>
+      <button class="btn btn-primary" onclick="startNewRun()">Try Again</button>
+    </div>
+  </div>
+</div>
+<div id="screen-victory" class="screen">
+  <div class="end-screen">
+    <h2 class="end-title victory">🏆 VICTORY! 🏆</h2>
+    <p class="end-subtitle">You conquered all three acts!</p>
+    <div class="result-panel" style="margin:0 auto 24px">
+      <div style="color:var(--text2)">Final Score</div>
+      <div class="final-score" id="victory-score">0</div>
+      <div class="hearts-row" id="victory-hearts" style="justify-content:center;margin-top:12px"></div>
+      <div style="color:var(--text2);margin-top:8px">Stability remaining</div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button class="btn btn-secondary" onclick="showScreen('menu')">Menu</button>
+      <button class="btn btn-gold" onclick="startNewRun()">Play Again</button>
+    </div>
+  </div>
+</div>
+<div id="screen-stats" class="screen">
+  <h2 style="font-size:2rem;font-weight:700;color:white;margin-bottom:24px">Statistics</h2>
+  <div class="stats-grid" id="stats-grid"></div>
+  <button class="btn btn-secondary" onclick="showScreen('menu')" style="margin-top:24px">Back</button>
+</div>
+<div class="modal-overlay" id="bust-modal">
+  <div class="modal-content">
+    <div class="modal-title">⚠ BUST WARNING ⚠</div>
+    <p style="color:var(--text2);margin-bottom:24px">You're about to bust! Use Second Chance to cancel?</p>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button class="btn btn-danger" onclick="confirmBust()">Accept Bust</button>
+      <button class="btn btn-success" onclick="useSecondChance()">Use Second Chance</button>
+    </div>
+  </div>
+</div>
+<script>
+const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
+const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const RANK_VALUES = {A:11,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:10,Q:10,K:10};
+const SUIT_SYMBOLS = {hearts:'♥',diamonds:'♦',clubs:'♣',spades:'♠'};
+const CATEGORY_COLORS = {value:'#4a9eff',suit:'#9c27b0',threshold:'#ff9800',action:'#4caf50',hand:'#00bcd4',entropy:'#f44336'};
+
+const DECKS = [
+  {id:'standard',name:'Standard',desc:'Classic 52-card deck. Balanced gameplay.',count:52},
+  {id:'lean',name:'Lean',desc:'No face cards. Tighter margins, more control.',count:40},
+  {id:'heavy',name:'Heavy',desc:'Extra face cards. Higher values, higher risk.',count:64},
+  {id:'fractured',name:'Fractured',desc:'Only Hearts and Clubs. Limited options.',count:26},
+  {id:'joker',name:'Joker',desc:'Standard deck + 4 wild Jokers.',count:56},
+  {id:'stripped',name:'Stripped',desc:'Only 7-A cards. High value, high risk.',count:32},
+  {id:'chaos',name:'Chaos',desc:'Card values randomized. Pure luck.',count:52},
+  {id:'doubles',name:'Doubles',desc:'Two copies of every card. More consistency.',count:104},
+  {id:'lowball',name:'Lowball',desc:'Only 2-8 cards. Low values, tight margins.',count:28}
+];
+
+const ALL_MODIFIERS = [
+  {id:'soft_aces',name:'Soft Aces',category:'value',desc:'Aces = 1 or 11'},
+  {id:'heavy_royals',name:'Heavy Royals',category:'value',desc:'Face cards = 12'},
+  {id:'lean_royals',name:'Lean Royals',category:'value',desc:'Face cards = 8'},
+  {id:'numeric_inflation',name:'Numeric Inflation',category:'value',desc:'+1 to number cards'},
+  {id:'numeric_decay',name:'Numeric Decay',category:'value',desc:'-1 to number cards'},
+  {id:'prime_bonus',name:'Prime Bonus',category:'value',desc:'+2 to primes (2,3,5,7)'},
+  {id:'high_roller',name:'High Roller',category:'value',desc:'+3 to cards ≥10'},
+  {id:'low_roller',name:'Low Roller',category:'value',desc:'+3 to cards ≤5'},
+  {id:'dual_suit',name:'Dual Suit',category:'suit',desc:'Two suits score together'},
+  {id:'locked_suit',name:'Locked Suit',category:'suit',desc:'First suit = only scoring suit'},
+  {id:'color_merge',name:'Color Merge',category:'suit',desc:'Red or Black scores'},
+  {id:'wild_ace',name:'Wild Ace',category:'suit',desc:'Aces count as any suit'},
+  {id:'dominant_suit',name:'Dominant Suit',category:'suit',desc:'Most common suit scores'},
+  {id:'raised_ceiling',name:'Raised Ceiling',category:'threshold',desc:'Bust limit +3 (34)'},
+  {id:'lowered_ceiling',name:'Lowered Ceiling',category:'threshold',desc:'Bust limit -2 (29)'},
+  {id:'exactitude',name:'Exactitude',category:'threshold',desc:'Exact 31 = DOUBLE points!'},
+  {id:'grace_window',name:'Grace Window',category:'threshold',desc:'Bust up to +2 still scores'},
+  {id:'overdraw',name:'Overdraw',category:'threshold',desc:'Bust subtracts excess'},
+  {id:'risk_premium',name:'Risk Premium',category:'threshold',desc:'+8 if within 2 of bust'},
+  {id:'safety_net',name:'Safety Net',category:'threshold',desc:'First bust ignored'},
+  {id:'extra_action',name:'Extra Action',category:'action',desc:'+1 action per round'},
+  {id:'delayed_action',name:'Delayed Action',category:'action',desc:'+2 actions after Knock'},
+  {id:'free_first_draw',name:'Free First Draw',category:'action',desc:'First draw free'},
+  {id:'costly_discards',name:'Costly Discards',category:'action',desc:'Discard costs 1 action'},
+  {id:'momentum',name:'Momentum',category:'action',desc:'Unused actions add to value'},
+  {id:'tight_window',name:'Tight Window',category:'action',desc:'-1 action, +5 bonus'},
+  {id:'forced_draw',name:'Forced Draw',category:'action',desc:'Start with 3 cards'},
+  {id:'second_chance',name:'Second Chance',category:'action',desc:'Cancel bust once'},
+  {id:'boss_heal',name:'Boss Heal',category:'action',desc:'+1 Stability after boss'},
+  {id:'retention',name:'Retention',category:'hand',desc:'1 card carries over'},
+  {id:'sealed_cards',name:'Sealed Cards',category:'hand',desc:'Some cards locked'},
+  {id:'cursed_cards',name:'Cursed Cards',category:'hand',desc:'Some cards negative'},
+  {id:'heavy_deck',name:'Heavy Deck',category:'hand',desc:'+8 face cards'},
+  {id:'light_deck',name:'Light Deck',category:'hand',desc:'+8 low cards'},
+  {id:'shattered_deck',name:'Shattered Deck',category:'hand',desc:'Cards may duplicate'},
+  {id:'void_cards',name:'Void Cards',category:'hand',desc:'Some cards = 0'},
+  {id:'ghost_draw',name:'Ghost Draw',category:'hand',desc:'Discards reappear'},
+  {id:'decay',name:'Decay',category:'entropy',desc:'Cards lose value per round'},
+  {id:'chaos_draw',name:'Chaos Draw',category:'entropy',desc:'Random draw position'},
+  {id:'blind_discard',name:'Blind Discard',category:'entropy',desc:'Random discards'},
+  {id:'time_pressure',name:'Time Pressure',category:'entropy',desc:'Auto-knock after 2'},
+  {id:'stability_drain',name:'Stability Drain',category:'entropy',desc:'-1 Stability per boss'},
+  {id:'rule_bleed',name:'Rule Bleed',category:'entropy',desc:'Boss rules persist'}
+];
+
+const ALL_BOSSES = [
+  {id:'the_lock',name:'The Lock',act:1,desc:'First card locks scoring suit',rules:['locked_suit'],flavorText:'Once you commit, there is no turning back.'},
+  {id:'the_split',name:'The Split',act:1,desc:'Red OR black scores together',rules:['forced_dual_suit'],flavorText:'Division breeds opportunity.'},
+  {id:'the_void',name:'The Void',act:1,desc:'Bust subtracts excess',rules:['overdraw'],flavorText:'Greed consumes what it touches.'},
+  {id:'the_flood',name:'The Flood',act:1,desc:'Start with 4 cards',rules:['extra_start_cards'],flavorText:'Abundance is a curse.'},
+  {id:'the_crown',name:'The Crown',act:2,desc:'Only face cards score',rules:['face_only'],flavorText:'Royalty demands tribute.'},
+  {id:'the_floor',name:'The Floor',act:2,desc:'Lowest card auto-discarded',rules:['auto_discard_low'],flavorText:'The weak are culled.'},
+  {id:'the_spiral',name:'The Spiral',act:2,desc:'Target +1 per action',rules:['spiral_target'],flavorText:'Time devours certainty.'},
+  {id:'the_taxman',name:'The Taxman',act:2,desc:'Each card costs -1',rules:['card_tax'],flavorText:'Everything has a price.'},
+  {id:'the_scales',name:'The Scales',act:2,desc:'Must hit EXACT target',rules:['exact_target'],flavorText:'Balance is not a suggestion.'},
+  {id:'the_hunger',name:'The Hunger',act:2,desc:'Each action costs -1',rules:['action_tax'],flavorText:'Every move extracts toll.'},
+  {id:'the_fog',name:'The Fog',act:3,desc:'Hand hidden during draw',rules:['hidden_hand'],flavorText:'Certainty is an illusion.'},
+  {id:'the_seal',name:'The Seal',act:3,desc:'Cannot knock early',rules:['no_early_knock'],flavorText:'Patience is mandatory.'},
+  {id:'the_collapse',name:'The Collapse',act:3,desc:'Modifiers reduce score',rules:['negative_stack'],flavorText:'Everything falls apart.'},
+  {id:'the_executioner',name:'The Executioner',act:3,desc:'Lose 2 stability on fail',rules:['double_penalty'],flavorText:'Mercy is for the weak.'},
+  {id:'the_paradox',name:'The Paradox',act:3,desc:'Card values inverted',rules:['inverted_values'],flavorText:'Up is down. Nothing is certain.'}
+];
+
+let state = {
+  screen:'menu',deckType:'standard',stability:4,maxStability:4,actions:5,actionsPerRound:5,
+  totalScore:0,multiplier:1.0,streak:0,currentAct:1,currentRound:1,currentTarget:17,bustLimit:31,
+  deck:[],hand:[],discardPile:[],selectedCards:new Set(),activeModifiers:[],modifierChoices:[],
+  currentBoss:null,bossActive:false,bossRules:[],previousBossRules:[],disabledModifier:null,
+  usedDiscardDraw:false,usedFreeFirstDraw:false,usedSafetyNet:false,usedSecondChance:false,
+  hasKnocked:false,roundResults:null,roundCounter:0,bannedSuit:null,rotatingSuitIndex:0,
+  lastScoredSuit:null,lockedSuit:null,retainedCard:null
+};
+
+let stats = {totalRuns:0,wins:0,losses:0,bestScore:0,highestStreak:0,totalBossesDefeated:0,mostModifiersCollected:0,perfectRounds:0,totalRoundsPlayed:0};
+try{const s=localStorage.getItem('thirtyOneStats');if(s)stats={...stats,...JSON.parse(s)};}catch(e){}
+function saveStats(){try{localStorage.setItem('thirtyOneStats',JSON.stringify(stats));}catch(e){}}
+
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function createCard(rank,suit){return{rank,suit,baseValue:RANK_VALUES[rank],id:`${rank}-${suit}-${Math.random().toString(36).substr(2,9)}`,sealed:false,cursed:false,void:false};}
+function createDeck(deckType){
+  let cards=[];
+  if(deckType==='standard')for(const s of SUITS)for(const r of RANKS)cards.push(createCard(r,s));
+  else if(deckType==='lean')for(const s of SUITS)for(const r of RANKS)if(!['J','Q','K'].includes(r))cards.push(createCard(r,s));
+  else if(deckType==='heavy')for(const s of SUITS)for(const r of RANKS){cards.push(createCard(r,s));if(['J','Q','K'].includes(r))cards.push(createCard(r,s));}
+  else if(deckType==='fractured')for(const s of['hearts','clubs'])for(const r of RANKS)cards.push(createCard(r,s));
+  else if(deckType==='joker'){for(const s of SUITS)for(const r of RANKS)cards.push(createCard(r,s));for(let i=0;i<4;i++)cards.push({rank:'JK',suit:'joker',baseValue:0,id:`joker-${i}`,sealed:false,cursed:false,void:false,isJoker:true});}
+  else if(deckType==='stripped')for(const s of SUITS)for(const r of['7','8','9','10','J','Q','K','A'])cards.push(createCard(r,s));
+  else if(deckType==='chaos')for(const s of SUITS)for(const r of RANKS){const c=createCard(r,s);c.chaosValue=Math.floor(Math.random()*13)+1;cards.push(c);}
+  else if(deckType==='doubles')for(const s of SUITS)for(const r of RANKS){cards.push(createCard(r,s));cards.push(createCard(r,s));}
+  else if(deckType==='lowball')for(const s of SUITS)for(const r of['2','3','4','5','6','7','8'])cards.push(createCard(r,s));
+  return shuffle(cards);
+}
+
+function isNumberCard(c){return!['A','J','Q','K'].includes(c.rank);}
+function isFaceCard(c){return['J','Q','K'].includes(c.rank);}
+function isPrime(n){if(n<2)return false;for(let i=2;i<=Math.sqrt(n);i++)if(n%i===0)return false;return true;}
+function hasModifier(id){if(state.disabledModifier===id)return false;return state.activeModifiers.some(m=>m.id===id);}
+function hasRule(rule){return state.bossRules.includes(rule);}
+
+function getCardValue(card,hand){
+  if(card.isJoker)return 0;
+  if(card.chaosValue!==undefined){let v=card.chaosValue;if(card.void)return 0;if(card.cursed)return-v;return v;}
+  let v=card.baseValue;
+  if(card.void)return 0;if(card.cursed)return-v;
+  if(hasRule('inverted_values')){const m={A:2,2:11,3:10,4:9,5:8,6:7,7:6,8:5,9:4,10:3,J:12,Q:13,K:14};v=m[card.rank]||v;}
+  if(hasModifier('heavy_royals')&&isFaceCard(card))v=12;
+  if(hasModifier('lean_royals')&&isFaceCard(card))v=8;
+  if(hasModifier('numeric_inflation')&&isNumberCard(card))v+=1;
+  if(hasModifier('numeric_decay')&&isNumberCard(card))v-=1;
+  if(hasModifier('prime_bonus')&&isPrime(card.baseValue))v+=2;
+  if(hasModifier('high_roller')&&card.baseValue>=10)v+=3;
+  if(hasModifier('low_roller')&&card.baseValue<=5)v+=3;
+  if(hasModifier('decay'))v=Math.max(0,v-state.roundCounter);
+  return v;
+}
+
+function calculateScore(){
+  const hand=state.hand;if(hand.length===0)return{score:0,suit:'none'};
+  const cardValues=hand.map(c=>getCardValue(c,hand));
+  const bySuit={hearts:[],diamonds:[],clubs:[],spades:[]};
+  hand.forEach((card,i)=>{
+    if(card.isJoker)for(const s of SUITS)bySuit[s].push({card,value:cardValues[i],isWild:true});
+    else if(hasModifier('wild_ace')&&card.rank==='A')for(const s of SUITS)bySuit[s].push({card,value:cardValues[i],isWild:true});
+    else if(card.suit&&bySuit[card.suit])bySuit[card.suit].push({card,value:cardValues[i]});
+  });
+  let bestScore=0,bestSuit=SUITS[0];
+  if(state.lockedSuit&&(hasModifier('locked_suit')||hasRule('locked_suit'))){
+    const sc=bySuit[state.lockedSuit];let s=sc.reduce((a,e)=>a+e.value,0);
+    if(hasModifier('soft_aces'))while(s>state.bustLimit){const ace=sc.find(e=>e.card.rank==='A'&&e.value>1);if(!ace)break;s-=10;ace.value=1;}
+    bestScore=s;bestSuit=state.lockedSuit+' (locked)';
+  }else{
+    for(const suit of SUITS){
+      if(suit===state.bannedSuit)continue;
+      const sc=bySuit[suit];let s=sc.reduce((a,e)=>a+e.value,0);
+      if(hasModifier('soft_aces'))while(s>state.bustLimit){const ace=sc.find(e=>e.card.rank==='A'&&e.value>1);if(!ace)break;s-=10;ace.value=1;}
+      if(s>bestScore){bestScore=s;bestSuit=suit;}
+    }
+    if(hasModifier('dual_suit'))for(let i=0;i<SUITS.length;i++)for(let j=i+1;j<SUITS.length;j++){
+      const s1=SUITS[i],s2=SUITS[j];if(s1===state.bannedSuit||s2===state.bannedSuit)continue;
+      let sc=0;const counted=new Set();for(const e of[...bySuit[s1],...bySuit[s2]]){if(!e.isWild||!counted.has(e.card.id)){sc+=e.value;counted.add(e.card.id);}}
+      if(sc>bestScore){bestScore=sc;bestSuit=`${s1}+${s2}`;}
+    }
+    if(hasRule('forced_dual_suit'))for(const[s1,s2]of[['hearts','diamonds'],['clubs','spades']]){
+      if(s1===state.bannedSuit||s2===state.bannedSuit)continue;
+      let sc=0;const counted=new Set();for(const e of[...bySuit[s1],...bySuit[s2]]){if(!e.isWild||!counted.has(e.card.id)){sc+=e.value;counted.add(e.card.id);}}
+      if(sc>bestScore){bestScore=sc;bestSuit=`${s1}+${s2}`;}
+    }
+    if(hasModifier('color_merge'))for(const[cn,cs]of Object.entries({red:['hearts','diamonds'],black:['clubs','spades']})){
+      let sc=0;const counted=new Set();for(const s of cs){if(s===state.bannedSuit)continue;for(const e of bySuit[s]){if(!e.isWild||!counted.has(e.card.id)){sc+=e.value;counted.add(e.card.id);}}}
+      if(sc>bestScore){bestScore=sc;bestSuit=cn;}
+    }
+  }
+  let finalScore=bestScore;
+  if(hasRule('face_only')){finalScore=0;for(const c of hand)if(isFaceCard(c))finalScore+=getCardValue(c,hand);}
+  if(hasRule('card_tax'))finalScore-=hand.length;
+  if(hasRule('negative_stack'))finalScore-=state.activeModifiers.length*2;
+  return{score:Math.max(0,finalScore),suit:bestSuit};
+}
+
+function updateTarget(){
+  const baseTargets={1:[17,18,19,20,21],2:[22,23,24,25,26],3:[26,27,28,29,30]};
+  const bossTargets={1:22,2:27,3:31};
+  let target;
+  if(state.bossActive)target=bossTargets[state.currentAct];
+  else{const at=baseTargets[state.currentAct];target=at[Math.min(state.currentRound-1,at.length-1)];}
+  state.currentTarget=target;
+  let limit=31;if(hasModifier('raised_ceiling'))limit+=3;if(hasModifier('lowered_ceiling'))limit-=2;
+  state.bustLimit=limit;
+}
+
+function startNewRun(){
+  state={...state,stability:4,maxStability:4,actions:5,actionsPerRound:5,totalScore:0,multiplier:1.0,streak:0,
+    currentAct:1,currentRound:1,deck:[],hand:[],discardPile:[],selectedCards:new Set(),activeModifiers:[],
+    modifierChoices:[],currentBoss:null,bossActive:false,bossRules:[],previousBossRules:[],disabledModifier:null,
+    usedDiscardDraw:false,usedFreeFirstDraw:false,usedSafetyNet:false,usedSecondChance:false,hasKnocked:false,
+    roundResults:null,roundCounter:1,bannedSuit:null,rotatingSuitIndex:0,lastScoredSuit:null,lockedSuit:null,retainedCard:null};
+  state.deck=createDeck(state.deckType);
+  state.hand=[];for(let i=0;i<2&&state.deck.length>0;i++)state.hand.push(state.deck.pop());
+  updateTarget();showScreen('playing');render();
+}
+
+function startRound(){
+  state.hand=state.retainedCard?[state.retainedCard]:[];state.retainedCard=null;
+  let cardsToDraw=2;if(hasModifier('forced_draw'))cardsToDraw=3;if(state.bossRules.includes('extra_start_cards'))cardsToDraw=4;
+  for(let i=0;i<cardsToDraw&&state.deck.length>0&&state.hand.length<5;i++)state.hand.push(state.deck.pop());
+  state.actions=state.actionsPerRound+(hasModifier('extra_action')?1:0)-(hasModifier('tight_window')?1:0);
+  state.hasKnocked=false;state.usedDiscardDraw=false;state.usedFreeFirstDraw=false;state.selectedCards=new Set();
+  state.roundCounter++;state.lockedSuit=null;
+  if(hasModifier('sealed_cards')&&Math.random()<0.3&&state.hand.length>0){const idx=Math.floor(Math.random()*state.hand.length);state.hand[idx].sealed=true;}
+  if(hasModifier('cursed_cards')&&Math.random()<0.2&&state.hand.length>0){const idx=Math.floor(Math.random()*state.hand.length);state.hand[idx].cursed=true;}
+  if(hasModifier('void_cards')&&Math.random()<0.2&&state.hand.length>0){const idx=Math.floor(Math.random()*state.hand.length);state.hand[idx].void=true;}
+  updateTarget();showScreen('playing');render();
+}
+
+function drawCard(fromDiscard){
+  if(state.hand.length>=5)return;
+  const isFirstDraw=state.actions===state.actionsPerRound&&!state.usedFreeFirstDraw;
+  const freeFirst=hasModifier('free_first_draw')&&isFirstDraw;
+  if(fromDiscard){
+    if(state.usedDiscardDraw||state.discardPile.length===0)return;
+    state.hand.push(state.discardPile.pop());state.usedDiscardDraw=true;
+  }else{
+    if(state.deck.length===0){if(state.discardPile.length===0)return;state.deck=shuffle([...state.discardPile]);state.discardPile=[];}
+    if(!freeFirst&&state.actions<=0)return;
+    let idx=state.deck.length-1;if(hasModifier('chaos_draw'))idx=Math.floor(Math.random()*state.deck.length);
+    const card=state.deck.splice(idx,1)[0];state.hand.push(card);
+    if(!freeFirst)state.actions--;else state.usedFreeFirstDraw=true;
+    if(state.lockedSuit===null&&(hasModifier('locked_suit')||hasRule('locked_suit')))state.lockedSuit=card.suit;
+    if(hasRule('auto_discard_low')&&state.hand.length>1){
+      let lowIdx=0;for(let i=1;i<state.hand.length;i++)if(state.hand[i].baseValue<state.hand[lowIdx].baseValue)lowIdx=i;
+      state.discardPile.push(state.hand.splice(lowIdx,1)[0]);
+    }
+    if(hasRule('spiral_target'))state.currentTarget++;
+    if(hasModifier('shattered_deck')&&Math.random()<0.2)state.hand.push(createCard(card.rank,card.suit));
+    if(hasModifier('time_pressure')&&state.actionsPerRound-state.actions>=2)setTimeout(()=>knock(),100);
+  }
+  render();
+}
+
+function toggleCard(index){if(state.selectedCards.has(index))state.selectedCards.delete(index);else state.selectedCards.add(index);render();}
+
+function discardSelected(){
+  if(state.selectedCards.size===0)return;if(hasModifier('costly_discards')&&state.actions<=0)return;
+  let indicesToDiscard=[...state.selectedCards];
+  if(hasModifier('blind_discard')){
+    const count=state.selectedCards.size;indicesToDiscard=[];
+    const available=state.hand.map((_,i)=>i).filter(i=>!state.hand[i].sealed);
+    for(let i=0;i<count&&available.length>0;i++){const ri=Math.floor(Math.random()*available.length);indicesToDiscard.push(available.splice(ri,1)[0]);}
+  }
+  const toSet=new Set(indicesToDiscard);const discarded=state.hand.filter((_,i)=>toSet.has(i));
+  if(discarded.some(c=>c.sealed)){state.selectedCards=new Set();render();return;}
+  state.hand=state.hand.filter((_,i)=>!toSet.has(i));state.discardPile.push(...discarded);state.selectedCards=new Set();
+  if(hasModifier('costly_discards'))state.actions--;
+  if(hasModifier('ghost_draw'))for(const c of discarded)if(Math.random()<0.3){const pos=Math.floor(Math.random()*(state.deck.length+1));state.deck.splice(pos,0,c);}
+  render();
+}
+
+function knock(){
+  if(hasRule('no_early_knock')&&state.actions>0)return;
+  if(hasModifier('delayed_action')&&!state.hasKnocked){state.hasKnocked=true;state.actions+=2;render();return;}
+  let handScore=calculateScore().score;
+  if(hasModifier('momentum'))handScore+=state.actions;
+  if(hasRule('action_tax'))handScore=Math.max(0,handScore-(state.actionsPerRound-state.actions));
+  let busted=handScore>state.bustLimit,success=false;
+  if(busted){
+    if(hasModifier('grace_window')&&handScore<=state.bustLimit+2)busted=false;
+    if(hasModifier('overdraw')||hasRule('overdraw')){handScore=state.bustLimit-(handScore-state.bustLimit);busted=false;}
+    if(busted&&hasModifier('safety_net')&&!state.usedSafetyNet){busted=false;state.usedSafetyNet=true;}
+    if(busted&&hasModifier('second_chance')&&!state.usedSecondChance){document.getElementById('bust-modal').classList.add('active');return;}
+  }
+  if(hasRule('exact_target'))success=!busted&&handScore===state.currentTarget;else success=!busted&&handScore>=state.currentTarget;
+  let basePoints=0,bonusPoints=0;
+  if(success){
+    basePoints=10;const over=handScore-state.currentTarget;
+    if(over>=5)bonusPoints+=10;else if(over>=2)bonusPoints+=5;
+    if(state.bossActive)bonusPoints+=15;if(hasModifier('exactitude')&&handScore===31)bonusPoints+=basePoints;
+    if(hasModifier('risk_premium')&&handScore>=state.bustLimit-2)bonusPoints+=8;if(hasModifier('tight_window'))bonusPoints+=5;
+    const newStreak=state.streak+1,newMultiplier=Math.min(1.0+(newStreak-1)*0.5,3.0);
+    state.streak=newStreak;state.multiplier=newMultiplier;
+    const roundScore=Math.floor((basePoints+bonusPoints)*newMultiplier);state.totalScore+=roundScore;
+    if(state.bossActive)stats.totalBossesDefeated++;stats.totalRoundsPlayed++;if(handScore===state.currentTarget)stats.perfectRounds++;saveStats();
+    let retained=null;if(hasModifier('retention')&&state.hand.length>0){retained=state.hand[0];state.discardPile.push(...state.hand.slice(1));}else state.discardPile.push(...state.hand);
+    state.roundResults={handScore,success,busted,basePoints,bonusPoints,roundScore,multiplierUsed:newMultiplier};state.retainedCard=retained;
+  }else{
+    state.streak=0;state.multiplier=1.0;let stabLoss=1;if(hasRule('double_penalty'))stabLoss=2;state.stability=Math.max(0,state.stability-stabLoss);
+    let retained=null;if(hasModifier('retention')&&state.hand.length>0){retained=state.hand[0];state.discardPile.push(...state.hand.slice(1));}else state.discardPile.push(...state.hand);
+    state.roundResults={handScore,success,busted,basePoints:0,bonusPoints:0,roundScore:0,multiplierUsed:1.0};state.retainedCard=retained;
+    if(state.stability<=0){stats.totalRuns++;stats.losses++;if(state.totalScore>stats.bestScore)stats.bestScore=state.totalScore;saveStats();
+      document.getElementById('gameover-score').textContent=state.totalScore;
+      document.getElementById('gameover-progress').textContent=`Reached Act ${state.currentAct}, Round ${state.currentRound}`;
+      showScreen('game_over');return;}
+  }
+  state.hand=[];showScreen('round_end');render();
+}
+
+function useSecondChance(){state.usedSecondChance=true;state.activeModifiers=state.activeModifiers.filter(m=>m.id!=='second_chance');document.getElementById('bust-modal').classList.remove('active');render();}
+
+function confirmBust(){
+  document.getElementById('bust-modal').classList.remove('active');state.streak=0;state.multiplier=1.0;state.stability=Math.max(0,state.stability-1);
+  state.roundResults={handScore:calculateScore().score,success:false,busted:true,basePoints:0,bonusPoints:0,roundScore:0,multiplierUsed:state.multiplier};
+  if(state.stability<=0){stats.totalRuns++;stats.losses++;if(state.totalScore>stats.bestScore)stats.bestScore=state.totalScore;saveStats();
+    document.getElementById('gameover-score').textContent=state.totalScore;document.getElementById('gameover-progress').textContent=`Reached Act ${state.currentAct}, Round ${state.currentRound}`;
+    showScreen('game_over');return;}
+  state.discardPile.push(...state.hand);state.hand=[];showScreen('round_end');render();
+}
+
+function advanceRound(){
+  let nextRound=state.currentRound+1,nextAct=state.currentAct;
+  if(nextRound>6){
+    nextRound=1;nextAct++;if(!hasModifier('rule_bleed'))state.bossRules=[];state.bossActive=false;state.currentBoss=null;
+    if(hasModifier('boss_heal'))state.stability=Math.min(state.maxStability,state.stability+1);
+    if(hasModifier('stability_drain')){state.stability--;if(state.stability<=0){stats.totalRuns++;stats.losses++;saveStats();
+      document.getElementById('gameover-score').textContent=state.totalScore;document.getElementById('gameover-progress').textContent=`Reached Act ${nextAct}, Round 1`;showScreen('game_over');return;}}
+    if(nextAct>3){stats.totalRuns++;stats.wins++;if(state.totalScore>stats.bestScore)stats.bestScore=state.totalScore;
+      if(state.streak>stats.highestStreak)stats.highestStreak=state.streak;if(state.activeModifiers.length>stats.mostModifiersCollected)stats.mostModifiersCollected=state.activeModifiers.length;saveStats();
+      document.getElementById('victory-score').textContent=state.totalScore;renderHearts('victory-hearts',state.stability,state.maxStability);showScreen('victory');return;}
+    state.usedSafetyNet=false;
+  }
+  state.currentRound=nextRound;state.currentAct=nextAct;
+  if(nextRound===6){
+    let availableBosses=ALL_BOSSES.filter(b=>b.act===nextAct);
+    if(state.deckType==='lean')availableBosses=availableBosses.filter(b=>!b.rules.includes('face_only'));
+    if(availableBosses.length===0)availableBosses=ALL_BOSSES.filter(b=>b.act===nextAct);
+    const boss=availableBosses[Math.floor(Math.random()*availableBosses.length)];
+    state.currentBoss=boss;state.bossActive=true;state.previousBossRules=[...state.bossRules];state.bossRules=[...boss.rules];
+    if(boss.rules.includes('disable_best_mod')&&state.activeModifiers.length>0){
+      const valueMods=state.activeModifiers.filter(m=>m.category==='value'||m.category==='suit');
+      state.disabledModifier=(valueMods.length>0?valueMods[0]:state.activeModifiers[0]).id;
+    }else state.disabledModifier=null;
+    document.getElementById('boss-intro-name').textContent=boss.name;
+    document.getElementById('boss-intro-desc').textContent=boss.desc;
+    document.getElementById('boss-intro-flavor').textContent=`"${boss.flavorText}"`;
+    showScreen('boss_intro');return;
+  }
+  if(nextRound!==5&&state.activeModifiers.length<6){
+    const available=ALL_MODIFIERS.filter(m=>!state.activeModifiers.some(a=>a.id===m.id));
+    state.modifierChoices=shuffle(available).slice(0,3);
+    if(state.modifierChoices.length>0){renderModifierChoices();showScreen('modifier_select');return;}
+  }
+  startRound();
+}
+
+function selectModifier(modifier){
+  state.activeModifiers.push({...modifier});
+  if(modifier.id==='extra_action')state.actionsPerRound++;
+  if(modifier.id==='tight_window')state.actionsPerRound=Math.max(1,state.actionsPerRound-1);
+  if(modifier.id==='banned_suit')state.bannedSuit=SUITS[Math.floor(Math.random()*4)];
+  if(modifier.id==='heavy_deck'){const extra=[];for(const s of SUITS){extra.push(createCard('K',s),createCard('Q',s));}state.deck=shuffle([...state.deck,...extra]);}
+  if(modifier.id==='light_deck'){const extra=[];for(const s of SUITS){extra.push(createCard('2',s),createCard('3',s));}state.deck=shuffle([...state.deck,...extra]);}
+  startRound();
+}
+function skipModifier(){startRound();}
+
+function showScreen(screenId){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+screenId).classList.add('active');state.screen=screenId;render();}
+
+function renderHearts(containerId,filled,max){
+  const container=document.getElementById(containerId);container.innerHTML='';
+  for(let i=0;i<max;i++){
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('class','heart '+(i<filled?'filled':'empty'));
+    svg.innerHTML='<path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>';
+    container.appendChild(svg);
+  }
+}
+
+function getCardImagePath(card){
+  if(card.isJoker||card.suit==='joker'){
+    const jokerNum=parseInt(card.id?.split('-')[1])||0;
+    return jokerNum%2===0?'cards/redjoker.png':'cards/blackjoker.png';
+  }
+  const suitMap={hearts:'Heart',diamonds:'Diamond',clubs:'Club',spades:'Spade'};
+  const suitName=suitMap[card.suit];
+  if(!suitName)return null;
+  return `cards/${card.rank}${suitName}.png`;
+}
+
+function renderCard(card,index,inHand=true){
+  const div=document.createElement('div');div.className='card';
+  if(inHand&&state.selectedCards.has(index))div.classList.add('selected');
+  if(card.sealed)div.classList.add('sealed');if(card.cursed)div.classList.add('cursed');if(card.void)div.classList.add('void');
+  const isRed=card.suit==='hearts'||card.suit==='diamonds';const isJoker=card.isJoker||card.suit==='joker';
+  const imgPath=getCardImagePath(card);
+  if(imgPath){
+    const img=document.createElement('img');
+    img.src=imgPath;img.alt=`${card.rank} of ${card.suit}`;img.draggable=false;
+    img.style.width='100%';img.style.height='100%';img.style.objectFit='cover';img.style.borderRadius='8px';
+    img.onerror=function(){
+      div.classList.add('card-fallback');if(isRed)div.classList.add('red');
+      div.innerHTML=`<div class="rank">${card.rank}</div><div class="suit">${SUIT_SYMBOLS[card.suit]}</div>`;
+      const b=document.createElement('div');b.className='card-value-badge';b.textContent=getCardValue(card,state.hand);div.appendChild(b);
+    };
+    div.appendChild(img);
+  }else{
+    div.classList.add('card-fallback');if(isRed)div.classList.add('red');
+    if(isJoker)div.innerHTML=`<div class="rank">JK</div><div class="suit">🃏</div>`;
+    else div.innerHTML=`<div class="rank">${card.rank}</div><div class="suit">${SUIT_SYMBOLS[card.suit]}</div>`;
+  }
+  const badge=document.createElement('div');badge.className='card-value-badge';badge.textContent=getCardValue(card,state.hand);div.appendChild(badge);
+  if(inHand)div.onclick=()=>toggleCard(index);
+  return div;
+}
+
+function renderModifiers(){
+  const bar=document.getElementById('modifiers-bar');bar.innerHTML='';
+  for(const mod of state.activeModifiers){
+    const badge=document.createElement('div');badge.className='modifier-badge';
+    if(state.disabledModifier===mod.id)badge.style.opacity='0.4';
+    badge.style.background=CATEGORY_COLORS[mod.category]+'33';badge.style.borderLeft=`4px solid ${CATEGORY_COLORS[mod.category]}`;
+    const isSecondChance=mod.id==='second_chance'&&!state.usedSecondChance;
+    if(isSecondChance){badge.classList.add('clickable');badge.onclick=useSecondChance;}
+    badge.innerHTML=`<span>${mod.name}</span><div class="tooltip">${mod.desc}</div>`;bar.appendChild(badge);
+  }
+}
+
+function renderModifierChoices(){
+  const container=document.getElementById('modifier-choices');container.innerHTML='';
+  for(const mod of state.modifierChoices){
+    const choice=document.createElement('div');choice.className='modifier-choice';choice.style.borderLeftColor=CATEGORY_COLORS[mod.category];
+    choice.onclick=()=>selectModifier(mod);
+    choice.innerHTML=`<div class="modifier-choice-category">${mod.category}</div><div class="modifier-choice-name">${mod.name}</div><div class="modifier-choice-desc">${mod.desc}</div>`;
+    container.appendChild(choice);
+  }
+}
+
+function render(){
+  document.getElementById('stat-act').textContent=state.currentAct;
+  document.getElementById('stat-round').textContent=state.currentRound;
+  document.getElementById('stat-score').textContent=state.totalScore;
+  document.getElementById('stat-actions').textContent=state.actions;
+  document.getElementById('stat-streak').textContent=state.streak;
+  document.getElementById('stat-multi').textContent=state.multiplier.toFixed(1)+'x';
+  renderHearts('hearts-row',state.stability,state.maxStability);renderModifiers();
+  const bossBanner=document.getElementById('boss-banner');
+  if(state.bossActive&&state.currentBoss){bossBanner.style.display='block';document.getElementById('boss-banner-name').textContent=state.currentBoss.name;document.getElementById('boss-banner-desc').textContent=state.currentBoss.desc;}
+  else bossBanner.style.display='none';
+  const scoreResult=calculateScore();const currentScoreEl=document.getElementById('current-score');
+  currentScoreEl.textContent=scoreResult.score;currentScoreEl.classList.toggle('bust',scoreResult.score>state.bustLimit);
+  document.getElementById('target-display').textContent=`Target: ${state.currentTarget} | Bust: ${state.bustLimit}`;
+  document.getElementById('deck-count').textContent=state.deck.length;document.getElementById('discard-count').textContent=state.discardPile.length;
+  document.getElementById('discard-card').style.opacity=state.discardPile.length>0&&!state.usedDiscardDraw?'1':'0.5';
+  const handContainer=document.getElementById('hand-cards');handContainer.innerHTML='';
+  state.hand.forEach((card,i)=>{handContainer.appendChild(renderCard(card,i,true));});
+  document.getElementById('btn-draw').disabled=state.hand.length>=5||(state.actions<=0&&!hasModifier('free_first_draw'));
+  document.getElementById('btn-discard').disabled=state.selectedCards.size===0;
+  document.getElementById('btn-knock').disabled=hasRule('no_early_knock')&&state.actions>0;
+  if(state.screen==='round_end'&&state.roundResults){
+    const r=state.roundResults;
+    document.getElementById('result-title').textContent=r.success?'Round Complete!':(r.busted?'BUST!':'Failed!');
+    document.getElementById('result-title').className='result-title '+(r.success?'success':'fail');
+    document.getElementById('result-hand-score').textContent=r.handScore;document.getElementById('result-target').textContent=state.currentTarget;
+    document.getElementById('result-base').textContent=r.basePoints;document.getElementById('result-bonus').textContent='+'+r.bonusPoints;
+    document.getElementById('result-multi').textContent='x'+r.multiplierUsed.toFixed(1);document.getElementById('result-round-score').textContent='+'+r.roundScore;
+    renderHearts('result-hearts',state.stability,state.maxStability);
+  }
+  if(state.screen==='deck_select'){
+    const grid=document.getElementById('deck-grid');grid.innerHTML='';
+    for(const deck of DECKS){
+      const card=document.createElement('div');card.className='deck-card'+(state.deckType===deck.id?' selected':'');
+      card.onclick=()=>{state.deckType=deck.id;render();};
+      card.innerHTML=`<div class="deck-name">${deck.name}</div><div class="deck-desc">${deck.desc}</div><div class="deck-count">${deck.count} cards</div>`;
+      grid.appendChild(card);
+    }
+  }
+  if(state.screen==='stats'){
+    const grid=document.getElementById('stats-grid');
+    grid.innerHTML=`
+      <div class="stats-card"><div class="stats-card-value">${stats.totalRuns}</div><div class="stats-card-label">Total Runs</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.wins}</div><div class="stats-card-label">Wins</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.losses}</div><div class="stats-card-label">Losses</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.bestScore}</div><div class="stats-card-label">Best Score</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.highestStreak}</div><div class="stats-card-label">Highest Streak</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.totalBossesDefeated}</div><div class="stats-card-label">Bosses Defeated</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.mostModifiersCollected}</div><div class="stats-card-label">Most Modifiers</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.perfectRounds}</div><div class="stats-card-label">Perfect Rounds</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.totalRoundsPlayed}</div><div class="stats-card-label">Rounds Played</div></div>
+      <div class="stats-card"><div class="stats-card-value">${stats.totalRuns>0?Math.round(stats.wins/stats.totalRuns*100):0}%</div><div class="stats-card-label">Win Rate</div></div>
+    `;
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{render();});
+</script>
+</body>
+</html>
