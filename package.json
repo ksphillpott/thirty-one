@@ -1,9 +1,5 @@
 {
   "name": "thirty-one",
   "version": "1.0.0",
-  "description": "A roguelike card game",
-  "scripts": {
-    "start": "npx serve",
-    "dev": "npx live-server"
-  }
+  "scripts": {"start": "npx serve"}
 }
