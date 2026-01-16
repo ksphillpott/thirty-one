@@ -1,5 +1,1 @@
-{
-  "name": "thirty-one",
-  "version": "1.0.0",
-  "scripts": {"start": "npx serve"}
-}
+{"name":"thirty-one","version":"1.0.0","scripts":{"start":"npx serve"}}
